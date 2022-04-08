@@ -36,81 +36,81 @@ def main():
             print('You are broke!')
             sys.exit()
 
-            # make bet
-            print('Money:', money)
-            bet = getBet(money)
+        # make bet
+        print('Money:', money)
+        bet = getBet(money)
 
-            # deal
-            deck = getDeck()
-            dealerHand = [deck.pop(), deck.pop()]
-            playerHand = [deck.pop(), deck.pop()]
+        # deal
+        deck = getDeck()
+        dealerHand = [deck.pop(), deck.pop()]
+        playerHand = [deck.pop(), deck.pop()]
 
-            # player actions
-            print('Bet:', bet)
-            while True:
+        # player actions
+        print('Bet:', bet)
+        while True:
+            displayHands(playerHand, dealerHand, False)
+            print()
+
+            # Check bust
+            if getHandValue(playerHand) > 21:
+                break
+
+            # Get player move
+            move = getMove(playerHand, money - bet)
+
+            # Handle Action
+            if move == 'D':
+                additionalBet = getBet(min(bet, (money-bet)))
+                bet += additionalBet
+                print(f'Bet increased to {bet}.')
+                print('Bet:', bet)
+
+            if move in ('H', 'D'):
+                newCard = deck.pop()
+                rank, suit = newCard
+                print(f'You drew a {rank} of {suit}.')
+                playerHand.append(newCard)
+
+            if getHandValue(playerHand) > 21:
+                # busted
+                continue
+
+            if move in ('S', 'D'):
+                break
+
+        # Dealer
+        if getHandValue(playerHand) <= 21:
+            while getHandValue(dealerHand) < 17:
+                # Dealer hits
+                print('The Dealer hits...')
+                dealerHand.append(deck.pop())
                 displayHands(playerHand, dealerHand, False)
-                print()
 
-                # Check bust
-                if getHandValue(playerHand) > 21:
+                if getHandValue(dealerHand) > 21:
                     break
+                input('Press Enter to continue...')
+                print('\n\n')
 
-                # Get player move
-                move = getMove(playerHand, money - bet)
+        # show final hands:
+        displayHands(playerHand, dealerHand, True)
 
-                # Handle Action
-                if move == 'D':
-                    additionalBet = getBet(min(bet, (money-bet)))
-                    bet += additionalBet
-                    print('Bet increased to {}.'.format(bet))
-                    print('Bet:', bet)
+        playerValue = getHandValue(playerHand)
+        dealerValue = getHandValue(dealerHand)
 
-                if move in ('H', 'D'):
-                    newCard = deck.pop()
-                    rank, suit = newCard
-                    print('You drew a {} of {}.'.format(rank, suit))
-                    playerHand.append(newCard)
+        if dealerValue > 21:
+            print(f'Dealer busts, you win ${bet}')
+            money += bet
+        elif (playerValue > 21) or (playerValue < dealerValue):
+            print(f'you lost ${bet}!')
+            money -= bet
+        elif playerValue > dealerValue:
+            print(f'You won ${bet}!')
+            money += bet
+        elif playerValue == dealerValue:
+            print(f'Push. {bet} returned to you')
 
-                if getHandValue(playerHand) > 21:
-                    # busted
-                    continue
-
-                if move in ('S', 'D'):
-                    break
-
-            # Dealer
-            if getHandValue(playerHand) <= 21:
-                while getHandValue(dealerHand) < 17:
-                    # Dealer hits
-                    print('The Dealer hits...')
-                    dealerHand.append(deck.pop())
-                    diplayHands(playerHand, dealerHand, False)
-
-                    if getHandValue(dealerHand) > 21:
-                        break
-                    input('Press Enter to continue...')
-                    print('\n\n')
-
-            # show final hands:
-            displayHands(playerHand. dealerHand, True)
-
-            playerValue = getHandValue(playerHand)
-            dealerValue = getHandValue(dealerHand)
-
-            if dealerValue > 21:
-                print('Dealer busts, you win ${}'.format(bet))
-                money += bet
-            elif (playerValue > 21) or (playerValue < dealerValue):
-                print('you lost ${}!'.format(bet))
-                money -= bet
-            elif playerValue > dealerValue:
-                print('You won ${}!'.format(bet))
-                money += bet
-            elif playerValue == dealerValue:
-                print('Push. {} returned to you'.format(bet))
-
-            input('Press Enter to continue...')
-            print('\n\n')
+        input('Press Enter to continue...')
+        print('\n\n')
 
 
 def getBet(maxBet):
@@ -144,3 +144,91 @@ def getDeck():  # sourcery skip: for-append-to-extend
             deck.append((rank, suit))
     random.shuffle(deck)
     return deck
+
+
+def displayHands(playerHand, dealerHand, showDealerHand):
+    '''
+    Show the player and dealers cards. Hide dealers first card if showDealerHand is False.
+    '''
+    print()
+    if showDealerHand:
+        print('DEALER: ', getHandValue(dealerHand))
+        displayCards(dealerHand)
+    else:
+        print('DEALER: ???')
+        # Hide first card:
+        displayCards([BACKSIDE] + dealerHand[1:])
+
+    # Show player cards
+    print('PLAYER: ', getHandValue(playerHand))
+    displayCards(playerHand)
+
+
+def getHandValue(cards):
+    '''
+    Returns values of cards
+    '''
+    value = 0
+    numberOfAces = 0
+
+    # adds non-aces
+    for card in cards:
+        rank = card[0]
+        if rank == 'A':
+            numberOfAces += 1
+        elif rank in ('K', 'Q', 'J'):
+            value += 10
+        else:
+            value += int(rank)
+
+    # Add Aces
+    value += numberOfAces  # add 1 per ace
+    for i in range(numberOfAces):
+        if value + 10 <= 21:
+            value += 10
+
+    return value
+
+
+def displayCards(cards):
+    # sourcery skip: remove-unused-enumerate, use-fstring-for-formatting
+    '''
+    Display cards in cards list
+    '''
+    rows = ['', '', '', '', '']
+
+    for i, card in enumerate(cards):
+        rows[0] += ' ___ '
+        if card == BACKSIDE:
+            rows[1] += '|## | '
+            rows[2] += '|###| '
+            rows[3] += '|_##| '
+        else:
+            rank, suit = card
+            rows[1] += '|{} | '.format(rank.ljust(2))
+            rows[2] += '| {} | '.format(suit)
+            rows[3] += '|_{}| '.format(rank.rjust(2, '_'))
+
+    for row in rows:
+        print(row)
+
+
+def getMove(playerHand, money):
+    '''
+    Asks player for mofe - H, S, D
+    '''
+    while True:
+        moves = ['(H)it', '(S)tand']
+        if len(playerHand) == 2 and money > 0:
+            moves.append('(D)ouble Down')
+
+        movePrompt = ', '.join(moves) + '> '
+        move = input(movePrompt).upper()
+        if move in ('H', 'S'):
+            return move
+        if move == 'D' and '(D)ouble Down' in moves:
+            return move
+
+
+if __name__ == '__main__':
+    main()
